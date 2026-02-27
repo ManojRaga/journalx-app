@@ -7,14 +7,6 @@ It helps you capture daily reflections, organize them into a personal knowledge 
 
 ## Screenshots
 
-Place your screenshots in the `screenshots` directory with these filenames:
-
-- `screenshots/home.png`
-- `screenshots/editor.png`
-- `screenshots/chat.png`
-
-Then they will render below:
-
 ![Home screen](./screenshots/home.png)
 ![Editor](./screenshots/editor.png)
 ![Chat](./screenshots/chat.png)

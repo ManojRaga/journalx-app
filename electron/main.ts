@@ -36,10 +36,14 @@ const aiService = new AIService({ storage, settings })
 function createWindow() {
   win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },
   })
+
+  win.maximize()
+  win.show()
 
   // Test active push message to Renderer-process.
   win.webContents.on('did-finish-load', () => {

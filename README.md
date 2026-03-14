@@ -44,6 +44,7 @@ It helps you capture daily reflections, organize them into a personal knowledge 
 - **Modern UI/UX**
   - Built with **React 18**, **React Router v7**, and **Tailwind CSS**.
   - The main layout uses `AppLayout` with a persistent navigation sidebar (`Nav`) and routed content.
+  - Launches maximized for a full, immersive writing experience.
   - Themed with a dark, gradient-heavy aesthetic (midnight / onyx / aurum / pearl).
 
 - **Type-safe and modular architecture**
@@ -201,7 +202,6 @@ Built artifacts will appear under `release/`.
 
 ## Roadmap / Ideas
 
-- Rich text or markdown editing for entries
 - More powerful tagging and search
 - Timeline / calendar views of entries
 - Offline / local model support

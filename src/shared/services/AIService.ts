@@ -80,7 +80,7 @@ export class AIService {
         .map((item: { entry: { title: string; content: string }; score: number }) => `Title: ${item.entry.title}\n${item.entry.content}`)
         .join('\n\n')
 
-      const systemPrompt = `You are JournalX, a concise assistant that can analyze journal entries when asked.
+      const systemPrompt = `You are Pensieve, a concise assistant that can analyze journal entries when asked.
 
 Rules:
 - For casual messages (greetings, small talk), respond briefly and naturally — do NOT analyze journal data unless asked

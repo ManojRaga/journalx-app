@@ -12,7 +12,7 @@ export function Nav() {
       <div className="flex items-center gap-3 px-6 py-8">
         <span className="text-3xl">🪶</span>
         <div>
-          <p className="text-sm uppercase tracking-[0.35em] text-aurum/70">JournalX</p>
+          <p className="text-sm uppercase tracking-[0.35em] text-aurum/70">Pensieve</p>
           <h1 className="font-display text-xl text-pearl">Memento Lux</h1>
         </div>
       </div>

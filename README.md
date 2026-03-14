@@ -22,11 +22,12 @@ It helps you capture daily reflections, organize them into a personal knowledge 
 - **Rich journal home view**
   - Browse a **library of entries** with titles, summaries, tags, and last-updated timestamps.
   - Sorts entries by creation date so your latest reflections are always at the top.
-  - Quick preview panel to read the full entry without leaving the home screen.
+  - Quick preview panel with **Markdown rendering** to read entries without leaving the home screen.
 
 - **Focused writing experience**
   - Dedicated **Editor** screen for creating and refining entries.
-  - Title + long-form content editing with a clean, distraction-minimized layout.
+  - Full **Markdown support** — write with headings, bold, lists, links, and more.
+  - Toggleable **live preview** panel for side-by-side editing and rendered output.
   - Clear saving state feedback (`Saving...` / `Saved` / failure notice).
 
 - **AI-powered journal assistant (via OpenAI)**

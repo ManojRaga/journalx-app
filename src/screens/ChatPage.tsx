@@ -1,5 +1,6 @@
 import { FormEvent, ChangeEvent, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import Markdown from 'react-markdown'
 import type { ChatMessage, ChatReference } from '../shared/types/renderer'
 import { useChatStore } from '../shared/store/chatStore'
 
@@ -136,10 +137,16 @@ function MessageBubble({ message, isStreaming }: { message: ChatMessage; isStrea
   return (
     <div className={`flex ${align}`}>
       <div className={`max-w-2xl rounded-2xl px-6 py-4 text-base leading-relaxed ${bubbleClasses}`}>
-        <p className="whitespace-pre-wrap">
-          {message.content}
-          {isStreaming && message.content.length === 0 && <WaveDots />}
-        </p>
+        {message.role === 'assistant' ? (
+          <div className="prose prose-invert prose-sm max-w-none prose-p:my-1.5 prose-li:my-0.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-headings:text-aurum prose-strong:text-aurum/90 prose-a:text-aurum/80">
+            <Markdown>{message.content}</Markdown>
+            {isStreaming && message.content.length === 0 && <WaveDots />}
+          </div>
+        ) : (
+          <p className="whitespace-pre-wrap">
+            {message.content}
+          </p>
+        )}
       </div>
     </div>
   )

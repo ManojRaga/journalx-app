@@ -20,6 +20,7 @@
     "openai": "^6.29.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^7.9.3",
     "sonner": "^2.0.7",
     "uuid": "^13.0.0",
@@ -27,6 +28,7 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
+    "@tailwindcss/typography": "^0.5.19",
     "@types/react": "^18.2.64",
     "@types/react-dom": "^18.2.21",
     "@typescript-eslint/eslint-plugin": "^7.1.1",
@@ -61,12 +63,16 @@
       {
         "from": "node_modules/faiss-node/build/Release",
         "to": "native/faiss-node",
-        "filter": ["*.node"]
+        "filter": [
+          "*.node"
+        ]
       },
       {
         "from": "node_modules/better-sqlite3/build/Release",
         "to": "native/better-sqlite3",
-        "filter": ["*.node"]
+        "filter": [
+          "*.node"
+        ]
       }
     ],
     "asar": true,
@@ -75,12 +81,17 @@
       "**/node_modules/better-sqlite3/**"
     ],
     "mac": {
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "category": "public.app-category.productivity",
       "icon": "build/icon.icns"
     },
     "win": {
-      "target": ["nsis"],
+      "target": [
+        "nsis"
+      ],
       "icon": "build/icon.ico"
     },
     "nsis": {

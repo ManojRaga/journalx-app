@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import Markdown from 'react-markdown'
 import { useAppData } from '../shared/hooks/useAppData'
 import { useIpcInvoke } from '../shared/hooks/useIpcInvoke'
 import type { JournalPreview } from '../shared/types/renderer'
@@ -200,8 +201,8 @@ function JournalPreviewPanel({ entry, onDelete }: { entry: JournalEntry | null; 
           )}
         </div>
       </header>
-      <div className="mt-8 whitespace-pre-wrap text-base leading-relaxed text-pearl/80">
-        {entry.content || 'No content yet'}
+      <div className="prose prose-invert mt-8 max-w-none leading-relaxed prose-p:my-2 prose-li:my-0.5 prose-ul:my-2 prose-ol:my-2 prose-headings:text-pearl prose-headings:font-display prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg prose-strong:text-pearl prose-a:text-aurum/80 text-pearl/80">
+        <Markdown>{entry.content || 'No content yet'}</Markdown>
       </div>
       {entry.tags.length > 0 ? (
         <footer className="mt-8 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.3em] text-aurum/70">

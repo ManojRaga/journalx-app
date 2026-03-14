@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import Markdown from 'react-markdown'
 import { useIpcInvoke } from '../shared/hooks/useIpcInvoke'
 import type { JournalEntry } from '../shared/types/journal'
 
@@ -62,9 +63,9 @@ export function JournalEntryPage() {
 
       <article className="flex-1 overflow-y-auto px-12 py-10">
         <div className="prose prose-invert max-w-3xl space-y-6">
-          <pre className="whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 px-6 py-4 text-sm leading-relaxed text-pearl/80">
-            {entry.content || 'No content yet'}
-          </pre>
+          <div className="prose prose-invert max-w-none rounded-2xl border border-white/10 bg-black/20 px-6 py-4 leading-relaxed prose-p:my-2 prose-li:my-0.5 prose-ul:my-2 prose-ol:my-2 prose-headings:text-pearl prose-headings:font-display prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg prose-strong:text-pearl prose-a:text-aurum/80 text-pearl/80">
+            <Markdown>{entry.content || 'No content yet'}</Markdown>
+          </div>
           {entry.tags.length > 0 ? (
             <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.3em] text-aurum/70">
               {entry.tags.map((tag) => (

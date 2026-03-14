@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import Markdown from 'react-markdown'
 import { useIpcInvoke } from '../shared/hooks/useIpcInvoke'
 import { useAppData } from '../shared/hooks/useAppData'
 
@@ -13,6 +14,7 @@ export function EditorPage() {
   const [content, setContent] = useState('')
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
+  const [showPreview, setShowPreview] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -57,6 +59,16 @@ export function EditorPage() {
         <div className="flex items-center gap-3">
           <span className="text-xs text-pearl/40">{status}</span>
           <button
+            onClick={() => setShowPreview(!showPreview)}
+            className={`rounded-full border px-4 py-2 text-[10px] uppercase tracking-[0.3em] transition ${
+              showPreview
+                ? 'border-aurum/50 bg-aurum/10 text-aurum'
+                : 'border-white/10 text-pearl/50 hover:bg-white/5'
+            }`}
+          >
+            {showPreview ? 'Hide Preview' : 'Show Preview'}
+          </button>
+          <button
             className="rounded-full bg-aurum px-6 py-2 text-xs uppercase tracking-[0.2em] text-midnight shadow-glow disabled:opacity-40"
             disabled={saving}
             onClick={handleSave}
@@ -75,12 +87,22 @@ export function EditorPage() {
               placeholder="Entry title"
               className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-lg font-display text-pearl/90 placeholder:text-pearl/30 focus:outline-none"
             />
-            <textarea
-              value={content}
-              onChange={(event) => setContent(event.target.value)}
-              placeholder="Start writing your reflection..."
-              className="h-[60vh] w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-base leading-relaxed text-pearl/80 placeholder:text-pearl/30 focus:outline-none"
-            />
+            <div className="flex gap-6" style={{ height: '60vh' }}>
+              <textarea
+                value={content}
+                onChange={(event) => setContent(event.target.value)}
+                placeholder="Start writing your reflection... (supports Markdown)"
+                className={`${showPreview ? 'w-1/2' : 'w-full'} resize-none rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-base leading-relaxed text-pearl/80 placeholder:text-pearl/30 focus:outline-none`}
+              />
+              {showPreview && (
+                <div className="w-1/2 overflow-y-auto rounded-2xl border border-white/10 bg-white/5 px-6 py-4">
+                  <p className="mb-3 text-[10px] uppercase tracking-[0.3em] text-pearl/30">Preview</p>
+                  <div className="prose prose-invert max-w-none leading-relaxed prose-p:my-2 prose-li:my-0.5 prose-ul:my-2 prose-ol:my-2 prose-headings:text-pearl prose-headings:font-display prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg prose-strong:text-pearl prose-a:text-aurum/80 text-pearl/80">
+                    <Markdown>{content || '*Start writing to see a preview...*'}</Markdown>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

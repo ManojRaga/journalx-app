@@ -11,7 +11,7 @@ export default {
       },
       fontFamily: {
         display: ['"Playfair Display"', 'serif'],
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['"Playfair Display"', 'serif'],
       },
       boxShadow: {
         glow: '0 0 60px rgba(200, 169, 106, 0.35)',

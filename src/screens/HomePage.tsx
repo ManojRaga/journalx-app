@@ -20,7 +20,7 @@ export function HomePage() {
   }
 
   const sortedJournals = useMemo(() => {
-    return [...journals].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    return [...journals].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   }, [journals])
 
   useEffect(() => {
@@ -200,7 +200,7 @@ function JournalPreviewPanel({ entry, onDelete }: { entry: JournalEntry | null; 
           )}
         </div>
       </header>
-      <div className="mt-8 whitespace-pre-wrap text-sm leading-relaxed text-pearl/80">
+      <div className="mt-8 whitespace-pre-wrap text-base leading-relaxed text-pearl/80">
         {entry.content || 'No content yet'}
       </div>
       {entry.tags.length > 0 ? (

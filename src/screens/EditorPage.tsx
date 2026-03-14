@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useIpcInvoke } from '../shared/hooks/useIpcInvoke'
+import { useAppData } from '../shared/hooks/useAppData'
 
 export function EditorPage() {
   const { entryId } = useParams()
+  const navigate = useNavigate()
+  const { refreshJournals } = useAppData()
   const { invoke: getEntry } = useIpcInvoke('storage:getEntry')
   const { invoke: saveEntry } = useIpcInvoke('storage:saveEntry')
   const [title, setTitle] = useState('')
@@ -34,7 +37,8 @@ export function EditorPage() {
     setSaving(true)
     const result = await saveEntry({ id: entryId, title: title || 'Untitled', content, tags: [] })
     if (result) {
-      setStatus('Saved')
+      await refreshJournals()
+      navigate('/')
     } else {
       setStatus('Failed to save')
     }
@@ -75,7 +79,7 @@ export function EditorPage() {
               value={content}
               onChange={(event) => setContent(event.target.value)}
               placeholder="Start writing your reflection..."
-              className="h-[60vh] w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-sm leading-relaxed text-pearl/80 placeholder:text-pearl/30 focus:outline-none"
+              className="h-[60vh] w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-base leading-relaxed text-pearl/80 placeholder:text-pearl/30 focus:outline-none"
             />
           </div>
         </div>

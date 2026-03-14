@@ -6,7 +6,7 @@ import { SecureStore } from './SecureStore'
 import type { Settings, SettingsSnapshot } from '../types/settings'
 
 const DEFAULT_SETTINGS = {
-  model: 'gpt-5-mini',
+  model: 'gpt-5-nano',
 }
 
 export class SettingsStorage {

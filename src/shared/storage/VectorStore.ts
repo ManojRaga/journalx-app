@@ -48,13 +48,22 @@ if (!globalAny.__dirname) globalAny.__dirname = esmDirname
 
 const INDEX_PATH = path.join(VECTOR_DIR, 'journal.index')
 const METADATA_PATH = path.join(VECTOR_DIR, 'journal.meta.json')
-const EMBEDDING_MODEL = 'text-embedding-3-large'
+const EMBEDDING_MODEL = 'text-embedding-3-small'
 
 type EntryMetadata = { id: string; title: string; content: string }
 
 export class VectorStore {
   private index: any = null
   private metadata: EntryMetadata[] = []
+  private lastFingerprint: string = ''
+
+  private computeFingerprint(entries: JournalEntry[]): string {
+    // Fast hash based on entry ids, titles, and content lengths + last modified timestamps
+    return entries
+      .map((e) => `${e.id}:${e.title.length}:${e.content.length}:${e.updatedAt}`)
+      .sort()
+      .join('|')
+  }
 
   private async embed(texts: string[], apiKey: string): Promise<number[][]> {
     const client = new OpenAI({ apiKey })
@@ -68,6 +77,9 @@ export class VectorStore {
   async rebuild(entries: JournalEntry[], apiKey: string) {
     if (entries.length === 0) return
 
+    const fingerprint = this.computeFingerprint(entries)
+    if (fingerprint === this.lastFingerprint && this.index) return
+
     const FaissIndex = await loadFaiss()
     const texts = entries.map((e) => `${e.title}\n\n${e.content}`)
     const embeddings = await this.embed(texts, apiKey)
@@ -80,6 +92,7 @@ export class VectorStore {
     }
 
     this.metadata = entries.map((e) => ({ id: e.id, title: e.title, content: `${e.title}\n\n${e.content}` }))
+    this.lastFingerprint = fingerprint
 
     await fs.ensureDir(VECTOR_DIR)
     this.index.write(INDEX_PATH)

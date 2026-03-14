@@ -132,9 +132,35 @@ function MessageBubble({ message, isStreaming }: { message: ChatMessage; isStrea
   return (
     <div className={`flex ${align}`}>
       <div className={`max-w-2xl rounded-2xl px-6 py-4 text-sm leading-relaxed ${bubbleClasses}`}>
-        <p className="whitespace-pre-wrap">{message.content}{isStreaming && message.content.length === 0 ? '...' : ''}</p>
+        <p className="whitespace-pre-wrap">
+          {message.content}
+          {isStreaming && message.content.length === 0 && <WaveDots />}
+        </p>
       </div>
     </div>
+  )
+}
+
+function WaveDots() {
+  return (
+    <span className="inline-flex items-center gap-[3px]">
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="inline-block h-[6px] w-[6px] rounded-full bg-aurum/80"
+          style={{
+            animation: 'waveDot 1.2s ease-in-out infinite',
+            animationDelay: `${i * 0.15}s`,
+          }}
+        />
+      ))}
+      <style>{`
+        @keyframes waveDot {
+          0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+          30% { transform: translateY(-6px); opacity: 1; }
+        }
+      `}</style>
+    </span>
   )
 }
 

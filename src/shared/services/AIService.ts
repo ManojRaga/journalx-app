@@ -6,7 +6,7 @@ import type { JournalEntry } from '../types/journal'
 import type { SettingsStorage } from '../storage/SettingsStorage'
 import type { ChatRequest, ChatReference } from '../types/ai'
 
-const DEFAULT_MODEL = 'gpt-5-mini'
+const DEFAULT_MODEL = 'gpt-5-nano'
 
 type AIServiceConfig = {
   storage: FileStorage

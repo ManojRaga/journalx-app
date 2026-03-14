@@ -21,7 +21,6 @@ export type IpcInvokePayloads = {
   'ai:configure': {
     apiKey: string
     model?: string
-    embeddingProvider?: 'openai' | 'anthropic'
   }
   'ai:clear': void
   'ai:chat': {
@@ -39,6 +38,6 @@ export type IpcInvokeResponses = {
   'storage:deleteEntry': void
   'ai:configure': void
   'ai:clear': void
-  'ai:chat': import('../types/ai').ChatResponse
+  'ai:chat': void
   'settings:snapshot': import('./renderer').StoredSettings
 }

@@ -1,5 +1,6 @@
 export type ChatRequest = {
   prompt: string
+  history?: { role: 'user' | 'assistant'; content: string }[]
   topK?: number
 }
 

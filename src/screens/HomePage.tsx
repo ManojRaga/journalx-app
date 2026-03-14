@@ -90,7 +90,7 @@ function JournalLibrary({
           Your archive awaits its first story
         </div>
         <p className="mt-6 max-w-lg text-sm">
-          Create a new entry to begin building your personal knowledge base. Each reflection enriches Claude’s context.
+          Create a new entry to begin building your personal knowledge base. Each reflection enriches the AI’s context.
         </p>
       </div>
     )

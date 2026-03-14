@@ -1,13 +1,11 @@
 export type StoredSettings = {
   hasApiKey: boolean
   model: string
-  embeddingProvider: 'openai' | 'anthropic'
 }
 
 export type ConfigureAIRequest = {
   apiKey: string
   model?: string
-  embeddingProvider?: 'openai' | 'anthropic'
 }
 
 export type JournalPreview = {

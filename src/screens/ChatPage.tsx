@@ -1,28 +1,68 @@
-import { FormEvent, ChangeEvent } from 'react'
+import { FormEvent, ChangeEvent, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { useIpcInvoke } from '../shared/hooks/useIpcInvoke'
-import type { ChatMessage } from '../shared/types/renderer'
+import type { ChatMessage, ChatReference } from '../shared/types/renderer'
 import { useChatStore } from '../shared/store/chatStore'
 
 export function ChatPage() {
-  const { messages, input, setInput, addUserMessage, addAssistantMessage, clear } = useChatStore()
-  const { invoke: chat, loading, error } = useIpcInvoke('ai:chat')
+  const { messages, input, streamingId, setInput, addUserMessage, startAssistantMessage, clear } = useChatStore()
+  const [loading, setLoading] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const ipc = (window as any).journalx?.ipc
+    if (!ipc) return
+
+    const onChunk = (_event: any, text: string) => {
+      useChatStore.getState().appendChunk(text)
+    }
+    const onDone = (_event: any, references: ChatReference[]) => {
+      useChatStore.getState().finalizeAssistantMessage(references)
+      setLoading(false)
+    }
+    const onError = (_event: any, error: string) => {
+      toast.error(error || 'Unable to reach OpenAI. Check your API key in Settings.')
+      setLoading(false)
+    }
+
+    ipc.on('ai:chat:chunk', onChunk)
+    ipc.on('ai:chat:done', onDone)
+    ipc.on('ai:chat:error', onError)
+
+    return () => {
+      ipc.removeAllListeners('ai:chat:chunk')
+      ipc.removeAllListeners('ai:chat:done')
+      ipc.removeAllListeners('ai:chat:error')
+    }
+  }, [])
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
+  }, [messages])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const trimmed = input.trim()
-    if (!trimmed) return
+    if (!trimmed || loading) return
 
+    const history = messages.map((m) => ({ role: m.role, content: m.content }))
     addUserMessage(trimmed)
     setInput('')
+    startAssistantMessage()
+    setLoading(true)
 
-    const result = await chat({ prompt: trimmed })
-    if (!result) {
-      toast.error('Unable to reach Claude. Check your API key in Settings.')
+    const ipc = (window as any).journalx?.ipc
+    if (!ipc) {
+      toast.error('IPC bridge unavailable')
+      setLoading(false)
       return
     }
 
-    addAssistantMessage(result.response, result.references)
+    try {
+      await ipc.invoke('ai:chat', { prompt: trimmed, history })
+    } catch {
+      toast.error('Unable to reach OpenAI. Check your API key in Settings.')
+      setLoading(false)
+    }
   }
 
   const hasMessages = messages.length > 0
@@ -47,11 +87,11 @@ export function ChatPage() {
             </button>
           ) : null}
         </div>
-        {error ? <p className="mt-3 text-xs text-red-400">{error.message}</p> : null}
       </header>
 
       <div className="flex flex-1 flex-col px-12 py-10">
         <div
+          ref={scrollRef}
           className="space-y-6 overflow-y-scroll rounded-3xl border border-white/10 bg-black/30 p-8 backdrop-blur-xl"
           style={{
             height: 'calc(100vh - 300px)',
@@ -59,7 +99,7 @@ export function ChatPage() {
             scrollbarColor: '#d4af37 transparent'
           }}
         >
-          {hasMessages ? messages.map((message) => <MessageBubble key={message.id} message={message} />) : <EmptyState />}
+          {hasMessages ? messages.map((message) => <MessageBubble key={message.id} message={message} isStreaming={message.id === streamingId} />) : <EmptyState />}
         </div>
 
         <form onSubmit={handleSubmit} className="mt-6 flex items-center gap-4">
@@ -82,7 +122,7 @@ export function ChatPage() {
   )
 }
 
-function MessageBubble({ message }: { message: ChatMessage }) {
+function MessageBubble({ message, isStreaming }: { message: ChatMessage; isStreaming: boolean }) {
   const align = message.role === 'user' ? 'justify-end' : 'justify-start'
   const bubbleClasses =
     message.role === 'user'
@@ -92,7 +132,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   return (
     <div className={`flex ${align}`}>
       <div className={`max-w-2xl rounded-2xl px-6 py-4 text-sm leading-relaxed ${bubbleClasses}`}>
-        <p className="whitespace-pre-wrap">{message.content}</p>
+        <p className="whitespace-pre-wrap">{message.content}{isStreaming && message.content.length === 0 ? '...' : ''}</p>
       </div>
     </div>
   )

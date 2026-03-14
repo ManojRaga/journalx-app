@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -81,7 +82,13 @@ function registerIpcHandlers() {
   ipcMain.handle('storage:saveEntry', async (_event, payload) => journalService.saveEntry(payload))
   ipcMain.handle('storage:deleteEntry', async (_event, payload: { id: string }) => journalService.deleteEntry(payload.id))
 
-  ipcMain.handle('ai:chat', async (_event, payload) => aiService.chat(payload))
+  ipcMain.handle('ai:chat', async (_event, payload) => {
+    await aiService.chat(payload, {
+      onChunk: (text) => win?.webContents.send('ai:chat:chunk', text),
+      onDone: (references) => win?.webContents.send('ai:chat:done', references),
+      onError: (error) => win?.webContents.send('ai:chat:error', error),
+    })
+  })
   ipcMain.handle('ai:configure', async (_event, config) => aiService.configure(config))
   ipcMain.handle('ai:clear', async () => aiService.clearConfiguration())
   ipcMain.handle('settings:snapshot', async () => settings.snapshot())

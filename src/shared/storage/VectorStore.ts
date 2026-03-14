@@ -2,26 +2,24 @@ import fs from 'fs-extra'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
-import { OpenAIEmbeddings } from '@langchain/openai'
+import OpenAI from 'openai'
 import type { JournalEntry } from '../types/journal'
 import { VECTOR_DIR } from './constants'
-import { SettingsStorage } from './SettingsStorage'
 
-let FaissStore: typeof import('@langchain/community/vectorstores/faiss').FaissStore | null = null
 const require = createRequire(import.meta.url)
+
+let IndexFlatIP: any = null
 
 async function ensureFaissBinary() {
   const targetDir = path.join(process.cwd(), 'build')
   const targetPath = path.join(targetDir, 'faiss-node.node')
-  if (await fs.pathExists(targetPath)) {
-    return
-  }
+  if (await fs.pathExists(targetPath)) return
 
   let sourcePath: string | null = null
   try {
     const modulePath = require.resolve('faiss-node')
     sourcePath = path.join(path.dirname(modulePath), 'build', 'Release', 'faiss-node.node')
-  } catch (error) {
+  } catch {
     throw new Error('faiss-node module not found. Please install faiss-node.')
   }
 
@@ -33,92 +31,73 @@ async function ensureFaissBinary() {
   await fs.copyFile(sourcePath, targetPath)
 }
 
-async function loadFaissStore() {
-  if (FaissStore) return FaissStore
+async function loadFaiss() {
+  if (IndexFlatIP) return IndexFlatIP
   await ensureFaissBinary()
-  const module = await import('@langchain/community/vectorstores/faiss')
-  FaissStore = module.FaissStore
-  return FaissStore
+  const module = await import('faiss-node')
+  IndexFlatIP = module.default?.IndexFlatIP ?? module.IndexFlatIP
+  return IndexFlatIP
 }
 
 // Provide CommonJS globals expected by faiss-node when running in ESM
 const esmFilename = fileURLToPath(import.meta.url)
 const esmDirname = path.dirname(esmFilename)
 const globalAny = globalThis as { __filename?: string; __dirname?: string }
-if (!globalAny.__filename) {
-  globalAny.__filename = esmFilename
-}
-if (!globalAny.__dirname) {
-  globalAny.__dirname = esmDirname
-}
+if (!globalAny.__filename) globalAny.__filename = esmFilename
+if (!globalAny.__dirname) globalAny.__dirname = esmDirname
 
 const INDEX_PATH = path.join(VECTOR_DIR, 'journal.index')
 const METADATA_PATH = path.join(VECTOR_DIR, 'journal.meta.json')
+const EMBEDDING_MODEL = 'text-embedding-3-large'
+
+type EntryMetadata = { id: string; title: string; content: string }
 
 export class VectorStore {
-  private store: FaissStore | null = null
-  private readonly settings = new SettingsStorage()
+  private index: any = null
+  private metadata: EntryMetadata[] = []
 
-  private async getEmbeddings() {
-    const apiKey = await this.settings.getApiKey()
-    if (!apiKey) {
-      throw new Error('Claude API key not configured; cannot build embeddings')
-    }
-
-    const openAIApiKey = process.env.OPENAI_API_KEY
-    if (!openAIApiKey) {
-      throw new Error('OPENAI_API_KEY is required for embeddings')
-    }
-
-    return new OpenAIEmbeddings({
-      apiKey: openAIApiKey,
-      model: 'text-embedding-3-large',
+  private async embed(texts: string[], apiKey: string): Promise<number[][]> {
+    const client = new OpenAI({ apiKey })
+    const response = await client.embeddings.create({
+      model: EMBEDDING_MODEL,
+      input: texts,
     })
+    return response.data.map((item) => item.embedding)
   }
 
-  private async ensureStore(embeddings?: OpenAIEmbeddings) {
-    if (this.store) return this.store
+  async rebuild(entries: JournalEntry[], apiKey: string) {
+    if (entries.length === 0) return
 
-    const resolvedEmbeddings = embeddings ?? (await this.getEmbeddings())
-    const Faiss = await loadFaissStore()
+    const FaissIndex = await loadFaiss()
+    const texts = entries.map((e) => `${e.title}\n\n${e.content}`)
+    const embeddings = await this.embed(texts, apiKey)
 
-    if (await fs.pathExists(INDEX_PATH)) {
-      this.store = await Faiss.load(VECTOR_DIR, resolvedEmbeddings)
-    } else {
-      this.store = await Faiss.fromTexts([''], [{ id: 'placeholder' }], resolvedEmbeddings)
-      await fs.ensureDir(VECTOR_DIR)
-      await this.store.save(VECTOR_DIR)
+    const dimension = embeddings[0].length
+    this.index = new FaissIndex(dimension)
+
+    for (const embedding of embeddings) {
+      this.index.add(embedding)
     }
 
-    return this.store
-  }
+    this.metadata = entries.map((e) => ({ id: e.id, title: e.title, content: `${e.title}\n\n${e.content}` }))
 
-  async rebuild(entries: JournalEntry[]) {
-    const embeddings = await this.getEmbeddings()
-    const documents = entries.map((entry) => ({
-      pageContent: `${entry.title}\n\n${entry.content}`,
-      metadata: { id: entry.id, title: entry.title, createdAt: entry.createdAt },
-    }))
-
-    const Faiss = await loadFaissStore()
-    this.store = await Faiss.fromDocuments(documents, embeddings)
     await fs.ensureDir(VECTOR_DIR)
-    await this.store.save(VECTOR_DIR)
-    await fs.writeJSON(METADATA_PATH, entries.map((entry) => ({ id: entry.id, title: entry.title })), { spaces: 2 })
+    this.index.write(INDEX_PATH)
+    await fs.writeJSON(METADATA_PATH, this.metadata, { spaces: 2 })
   }
 
-  async search(query: string, topK: number) {
-    const embeddings = await this.getEmbeddings()
-    const store = await this.ensureStore(embeddings)
-    const results = await store.similaritySearchWithScore(query, topK)
+  async search(query: string, topK: number, apiKey: string) {
+    if (!this.index || this.metadata.length === 0) {
+      return []
+    }
 
-    return results.map(([document, score]) => ({
-      entry: {
-        id: document.metadata.id as string,
-        title: document.metadata.title as string,
-        content: document.pageContent,
-      },
-      score,
+    const [queryEmbedding] = await this.embed([query], apiKey)
+    const k = Math.min(topK, this.metadata.length)
+    const result = this.index.search(queryEmbedding, k)
+
+    return result.labels.map((idx: number, i: number) => ({
+      entry: this.metadata[idx],
+      score: result.distances[i],
     }))
   }
 }

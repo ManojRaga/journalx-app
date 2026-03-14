@@ -6,12 +6,7 @@ import { SecureStore } from './SecureStore'
 import type { Settings, SettingsSnapshot } from '../types/settings'
 
 const DEFAULT_SETTINGS = {
-  embeddingProvider: 'anthropic' as const,
-  model: 'claude-sonnet-4-5-20250929',
-}
-
-const MODEL_MIGRATIONS: Record<string, string> = {
-  'claude-4.5-sonnet': DEFAULT_SETTINGS.model,
+  model: 'gpt-5-mini',
 }
 
 export class SettingsStorage {
@@ -28,13 +23,7 @@ export class SettingsStorage {
         this.cache = initial
       } else {
         const raw = await fs.readJSON(CONFIG_FILE)
-        const merged = { ...DEFAULT_SETTINGS, ...raw }
-        const migratedModel = MODEL_MIGRATIONS[merged.model as string]
-        if (migratedModel && migratedModel !== merged.model) {
-          merged.model = migratedModel
-          await fs.writeJSON(CONFIG_FILE, merged, { spaces: 2 })
-        }
-        this.cache = merged
+        this.cache = { ...DEFAULT_SETTINGS, ...raw }
       }
     }
 
@@ -46,7 +35,6 @@ export class SettingsStorage {
     const next: Settings = {
       encryptedApiKey: partial.encryptedApiKey ?? current.encryptedApiKey,
       model: partial.model ?? current.model ?? DEFAULT_SETTINGS.model,
-      embeddingProvider: partial.embeddingProvider ?? current.embeddingProvider ?? DEFAULT_SETTINGS.embeddingProvider,
     }
 
     this.cache = next
@@ -82,8 +70,6 @@ export class SettingsStorage {
     return {
       hasApiKey: Boolean(settings.encryptedApiKey),
       model: settings.model ?? DEFAULT_SETTINGS.model,
-      embeddingProvider: settings.embeddingProvider ?? DEFAULT_SETTINGS.embeddingProvider,
     }
   }
 }
-

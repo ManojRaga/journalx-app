@@ -29,9 +29,10 @@ It helps you capture daily reflections, organize them into a personal knowledge 
   - Title + long-form content editing with a clean, distraction-minimized layout.
   - Clear saving state feedback (`Saving...` / `Saved` / failure notice).
 
-- **AI-powered insights (via LangChain + Anthropic/OpenAI)**
-  - Integrates `langchain`, `@anthropic-ai/sdk`, and `@langchain/openai` for AI features.
+- **AI-powered insights (via OpenAI)**
+  - Uses the OpenAI API directly for chat (GPT-5 Mini) and embeddings (`text-embedding-3-large`).
   - Vector store powered by `faiss-node` for semantic retrieval over your journal.
+  - Streaming responses in the **Chat** screen with full conversation context.
   - A **Chat** screen to converse with an AI about your entries (reflection, summarization, pattern-finding, etc.).
 
 - **Modern UI/UX**
@@ -63,7 +64,7 @@ It helps you capture daily reflections, organize them into a personal knowledge 
 
 - **Data / AI**
   - better-sqlite3 for fast local database access
-  - LangChain + `@langchain/anthropic`, `@langchain/openai`
+  - OpenAI SDK for chat completions and embeddings
   - faiss-node for vector search over journal entries
 
 - **Tooling**
@@ -193,7 +194,7 @@ Built artifacts will appear under `dist*` / `release` (typically ignored by git)
 - Rich text or markdown editing for entries
 - More powerful tagging and search
 - Timeline / calendar views of entries
-- Multi-LLM support and offline models
+- Offline / local model support
 - Encrypted backups and multi-device sync (optional)
 
 ---

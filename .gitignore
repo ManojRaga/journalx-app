@@ -6,3 +6,4 @@ build/*.node
 *.log
 .DS_Store
 .env
+*.dmg

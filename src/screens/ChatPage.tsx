@@ -139,7 +139,7 @@ function MessageBubble({ message, isStreaming }: { message: ChatMessage; isStrea
     <div className={`flex ${align}`}>
       <div className={`max-w-2xl rounded-2xl px-6 py-4 text-base leading-relaxed ${bubbleClasses}`}>
         {message.role === 'assistant' ? (
-          <div className="prose prose-invert prose-sm max-w-none prose-p:my-1.5 prose-li:my-0.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-headings:text-aurum prose-strong:text-aurum/90 prose-a:text-aurum/80">
+          <div className="prose prose-invert prose-sm max-w-none prose-p:my-1.5 prose-li:my-0.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-headings:text-aurum prose-a:text-aurum/80" style={{ '--tw-prose-bold': 'rgba(200, 169, 106, 0.9)' } as React.CSSProperties}>
             <Markdown>{message.content}</Markdown>
             {isStreaming && message.content.length === 0 && <WaveDots />}
           </div>

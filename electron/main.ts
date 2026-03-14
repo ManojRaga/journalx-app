@@ -92,4 +92,8 @@ function registerIpcHandlers() {
   ipcMain.handle('ai:configure', async (_event, config) => aiService.configure(config))
   ipcMain.handle('ai:clear', async () => aiService.clearConfiguration())
   ipcMain.handle('settings:snapshot', async () => settings.snapshot())
+  ipcMain.handle('settings:setModel', async (_event, payload: { model: string }) => {
+    await settings.setSettings({ model: payload.model })
+    aiService.setModel(payload.model)
+  })
 }

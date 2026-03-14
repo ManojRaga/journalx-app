@@ -19,6 +19,77 @@ type StreamCallbacks = {
   onError: (error: string) => void
 }
 
+// Keywords that signal a broad query needing more context
+const BROAD_QUERY_PATTERNS = /\b(summarize|summary|overview|themes?|patterns?|recurring|trend|reflect|overall|generally|month|year|lately|recently|all\s+my|across|how\s+have\s+i\s+been)\b/i
+
+// Patterns that signal a time-bounded query
+const TIME_PATTERNS: { pattern: RegExp; getDays: () => number }[] = [
+  { pattern: /\b(today|this morning|tonight)\b/i, getDays: () => 1 },
+  { pattern: /\byesterday\b/i, getDays: () => 2 },
+  { pattern: /\b(this|past|last)\s+week\b/i, getDays: () => 7 },
+  { pattern: /\b(past|last)\s+two\s+weeks\b/i, getDays: () => 14 },
+  { pattern: /\b(this|past|last)\s+month\b/i, getDays: () => 30 },
+  { pattern: /\b(past|last)\s+few\s+months\b/i, getDays: () => 90 },
+  { pattern: /\b(this|past|last)\s+year\b/i, getDays: () => 365 },
+  { pattern: /\brecently\b/i, getDays: () => 14 },
+  { pattern: /\blately\b/i, getDays: () => 21 },
+]
+
+function detectDateRange(query: string): Date | null {
+  for (const { pattern, getDays } of TIME_PATTERNS) {
+    if (pattern.test(query)) {
+      const cutoff = new Date()
+      cutoff.setDate(cutoff.getDate() - getDays())
+      cutoff.setHours(0, 0, 0, 0)
+      return cutoff
+    }
+  }
+  return null
+}
+
+function detectDynamicTopK(query: string): number {
+  return BROAD_QUERY_PATTERNS.test(query) ? 8 : 3
+}
+
+function formatEntryDate(isoDate: string): string {
+  return new Date(isoDate).toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
+}
+
+function buildSystemPrompt(context: string, entryCount: number): string {
+  const today = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
+
+  let prompt = `You are Pensieve, a thoughtful and reflective journal assistant. Today is ${today}. The user has ${entryCount} journal entries.
+
+Your role is to help the user understand their own thoughts, feelings, and patterns through their journal entries.
+
+Guidelines:
+- For casual messages (greetings, small talk), respond warmly and briefly — do NOT analyze journal data unless asked
+- When the user asks about their entries, draw on the provided snippets to give direct, grounded answers
+- Be temporally aware: note when entries were written, distinguish between recent and older reflections, and track how things evolve over time
+- Be emotionally sensitive: journal entries are deeply personal. When entries touch on difficult topics (grief, anxiety, conflict, loss), respond with care and empathy — never be dismissive or clinical
+- Look for patterns: when multiple entries are provided, notice recurring themes, mood shifts, contradictions, or growth — share these observations when relevant
+- For vague questions like "how have I been?", offer a multi-angle summary across the entries available rather than fixating on a single snippet. If the entries don't cover enough ground, gently say so
+- Keep responses concise but warm — be a thoughtful companion, not a report generator
+- Always refer to the journal author as "you", never "the writer" or "the author"
+- When quoting or referencing specific entries, mention the date so the user can place it in time`
+
+  if (context) {
+    prompt += `\n\n--- Journal Entries for Reference ---\n${context}`
+  }
+
+  return prompt
+}
+
 export class AIService {
   private readonly store = new InMemoryStore()
   private readonly vectorStore = new VectorStore()
@@ -36,6 +107,10 @@ export class AIService {
 
     this.client = new OpenAI({ apiKey: config.apiKey })
     this.model = resolvedModel
+  }
+
+  setModel(model: string) {
+    this.model = model
   }
 
   async clearConfiguration() {
@@ -68,30 +143,37 @@ export class AIService {
       const apiKey = this.store.get<string>('apiKey') ?? (await this.deps.settings.getApiKey())
       await this.vectorStore.rebuild(validDocuments, apiKey!)
 
-      // Build a search query enriched with recent conversation context
-      // so vague follow-ups like "tell me more about it" resolve correctly
+      // Determine dynamic topK based on query breadth
+      const topK = payload.topK ?? detectDynamicTopK(payload.prompt)
+
+      // Build search query from recent conversation context
       const recentHistory = (payload.history ?? []).slice(-4)
       const searchQuery = recentHistory.length > 0
         ? [...recentHistory.map((m) => m.content), payload.prompt].join('\n')
         : payload.prompt
-      const results = await this.vectorStore.search(searchQuery, payload.topK ?? 3, apiKey!)
+      let results = await this.vectorStore.search(searchQuery, topK, apiKey!)
 
+      // Filter by date range if the query implies a time window
+      const dateCutoff = detectDateRange(payload.prompt)
+      if (dateCutoff) {
+        const filtered = results.filter((r) => new Date(r.entry.createdAt) >= dateCutoff)
+        if (filtered.length > 0) results = filtered
+      }
+
+      // Deprioritize entries already referenced in previous turns
+      const previousIds = new Set(payload.previousEntryIds ?? [])
+      if (previousIds.size > 0) {
+        const fresh = results.filter((r) => !previousIds.has(r.entry.id))
+        const stale = results.filter((r) => previousIds.has(r.entry.id))
+        results = [...fresh, ...stale].slice(0, topK)
+      }
+
+      // Format context with dates for temporal grounding
       const context = results
-        .map((item: { entry: { title: string; content: string }; score: number }) => `Title: ${item.entry.title}\n${item.entry.content}`)
-        .join('\n\n')
+        .map((item) => `[${formatEntryDate(item.entry.createdAt)}] "${item.entry.title}"\n${item.entry.content}`)
+        .join('\n\n---\n\n')
 
-      const systemPrompt = `You are Pensieve, a concise assistant that can analyze journal entries when asked.
-
-Rules:
-- For casual messages (greetings, small talk), respond briefly and naturally — do NOT analyze journal data unless asked
-- When the user asks about their journal entries, draw on the provided snippets to give direct, factual answers
-- Keep responses short and to the point — avoid long lists and unsolicited suggestions
-- Be conversational, not clinical
-- Always refer to the journal author as "you", never "the writer" or "the author"`
-
-      const userPrompt = context
-        ? `${payload.prompt}\n\nRelevant journal snippets:\n${context}`
-        : payload.prompt
+      const systemPrompt = buildSystemPrompt(context, validDocuments.length)
 
       const stream = await this.client!.chat.completions.create({
         model: this.model,
@@ -100,7 +182,7 @@ Rules:
         messages: [
           { role: 'system' as const, content: systemPrompt },
           ...(payload.history ?? []).map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-          { role: 'user' as const, content: userPrompt },
+          { role: 'user' as const, content: payload.prompt },
         ],
       })
 
@@ -111,7 +193,7 @@ Rules:
         }
       }
 
-      callbacks.onDone(results.map((item: { entry: { id: string }; score: number }) => ({ id: item.entry.id, score: item.score })))
+      callbacks.onDone(results.map((item) => ({ id: item.entry.id, score: item.score })))
     } catch (err) {
       callbacks.onError(err instanceof Error ? err.message : 'Unknown error')
     }

@@ -7,6 +7,7 @@ export type IpcChannels =
   | 'ai:clear'
   | 'ai:chat'
   | 'settings:snapshot'
+  | 'settings:setModel'
 
 export type IpcInvokePayloads = {
   'storage:listEntries': void
@@ -28,6 +29,7 @@ export type IpcInvokePayloads = {
     topK?: number
   }
   'settings:snapshot': void
+  'settings:setModel': { model: string }
   'main-process-message': void
 }
 
@@ -40,4 +42,5 @@ export type IpcInvokeResponses = {
   'ai:clear': void
   'ai:chat': void
   'settings:snapshot': import('./renderer').StoredSettings
+  'settings:setModel': void
 }

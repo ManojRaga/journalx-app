@@ -1,7 +1,7 @@
-# JournalX
+# Pensieve
 
-JournalX is a local-first, AI-augmented journaling desktop app built with **Electron**, **Vite**, and **React**.  
-It helps you capture daily reflections, organize them into a personal knowledge base, and explore them with an AI assistant.
+Pensieve is a local-first, AI-augmented journaling desktop app built with **Electron**, **Vite**, and **React**.
+It helps you capture daily reflections, organize them into a personal knowledge base, and explore them with a thoughtful AI journal assistant.
 
 ---
 
@@ -21,7 +21,7 @@ It helps you capture daily reflections, organize them into a personal knowledge 
 
 - **Rich journal home view**
   - Browse a **library of entries** with titles, summaries, tags, and last-updated timestamps.
-  - Sorts entries by most recently updated so your current work is always at the top.
+  - Sorts entries by creation date so your latest reflections are always at the top.
   - Quick preview panel to read the full entry without leaving the home screen.
 
 - **Focused writing experience**
@@ -29,11 +29,16 @@ It helps you capture daily reflections, organize them into a personal knowledge 
   - Title + long-form content editing with a clean, distraction-minimized layout.
   - Clear saving state feedback (`Saving...` / `Saved` / failure notice).
 
-- **AI-powered insights (via OpenAI)**
-  - Uses the OpenAI API directly for chat (GPT-5 Mini) and embeddings (`text-embedding-3-large`).
-  - Vector store powered by `faiss-node` for semantic retrieval over your journal.
+- **AI-powered journal assistant (via OpenAI)**
+  - Configurable model selection: **GPT-5 Nano**, **GPT-5 Mini**, or **GPT-5.4**.
+  - Temporally-aware system prompt that understands entry dates and can reason about timelines and trends.
+  - Emotionally sensitive — responds with care when entries touch on difficult topics.
+  - Pattern recognition across entries: recurring themes, mood shifts, contradictions, and growth.
+  - Smart RAG pipeline with paragraph-level chunking and FAISS vector search (`text-embedding-3-small`).
+  - Dynamic retrieval depth — broad queries ("summarize my month") automatically fetch more context.
+  - Date-range filtering for time-bounded queries ("how was I feeling last week").
+  - Entry deduplication across conversation turns for richer follow-ups.
   - Streaming responses in the **Chat** screen with full conversation context.
-  - A **Chat** screen to converse with an AI about your entries (reflection, summarization, pattern-finding, etc.).
 
 - **Modern UI/UX**
   - Built with **React 18**, **React Router v7**, and **Tailwind CSS**.
@@ -65,7 +70,7 @@ It helps you capture daily reflections, organize them into a personal knowledge 
 - **Data / AI**
   - better-sqlite3 for fast local database access
   - OpenAI SDK for chat completions and embeddings
-  - faiss-node for vector search over journal entries
+  - faiss-node for vector search over journal entries (paragraph-level chunking)
 
 - **Tooling**
   - TypeScript
@@ -105,12 +110,12 @@ src/
       useIpcEvent.ts      # IPC wrapper for event subscriptions
     services/
       JournalService.ts   # CRUD operations for journal entries
-      AIService.ts        # AI-related calls (summaries, chat, etc.)
+      AIService.ts        # AI journal assistant (RAG, streaming, prompts)
     storage/
       FileStorage.ts      # File-based storage abstraction
       SecureStore.ts      # Secure/local storage
       SettingsStorage.ts  # Persistence for app settings
-      VectorStore.ts      # Faiss-based vector index for entries
+      VectorStore.ts      # Faiss-based vector index with paragraph chunking
       InMemoryStore.ts    # In-memory store implementation
       constants.ts        # Storage constants / paths
     store/
@@ -150,12 +155,15 @@ npm install
 npm run dev
 ```
 
-This starts the Vite dev server and Electron. You should see the JournalX window open. If you only see a browser URL, open it in a browser or check your Electron dev setup.
+This starts the Vite dev server and Electron. You should see the Pensieve window open.
 
 ### Build for production
 
 ```bash
-npm run build
+npm run build          # Auto-detect platform
+npm run build:mac      # macOS only (dmg + zip)
+npm run build:win      # Windows only (nsis)
+npm run build:all      # Both platforms
 ```
 
 This will:
@@ -164,7 +172,7 @@ This will:
 - Build the renderer bundle with Vite
 - Package the Electron app using `electron-builder`
 
-Built artifacts will appear under `dist*` / `release` (typically ignored by git).
+Built artifacts will appear under `release/`.
 
 ---
 
@@ -181,11 +189,12 @@ Built artifacts will appear under `dist*` / `release` (typically ignored by git)
 
 - **Chat with your journal**
   - Open the **Chat** tab.
-  - Ask questions like “What themes show up in my entries this month?” or “Summarize my last few reflections.”
-  - The AI uses your local entries and vector store to ground its responses.
+  - Ask questions like "What themes show up in my entries this month?" or "How have I been feeling lately?"
+  - The AI uses your local entries and vector store to ground its responses, with awareness of dates and emotional context.
+  - Broad questions automatically pull more entries for richer analysis.
 
 - **Configure settings**
-  - Go to the **Settings** screen to manage preferences such as AI configuration and storage behavior.
+  - Go to the **Settings** screen to set your OpenAI API key and choose your preferred model.
 
 ---
 
@@ -196,6 +205,7 @@ Built artifacts will appear under `dist*` / `release` (typically ignored by git)
 - Timeline / calendar views of entries
 - Offline / local model support
 - Encrypted backups and multi-device sync (optional)
+- Mood/sentiment timeline and proactive journaling prompts
 
 ---
 

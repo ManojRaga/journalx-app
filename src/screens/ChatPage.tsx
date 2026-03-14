@@ -45,6 +45,10 @@ export function ChatPage() {
     if (!trimmed || loading) return
 
     const history = messages.map((m) => ({ role: m.role, content: m.content }))
+    // Collect entry IDs already referenced in prior assistant messages
+    const previousEntryIds = messages
+      .filter((m) => m.references?.length)
+      .flatMap((m) => m.references!.map((r) => r.id))
     addUserMessage(trimmed)
     setInput('')
     startAssistantMessage()
@@ -58,7 +62,7 @@ export function ChatPage() {
     }
 
     try {
-      await ipc.invoke('ai:chat', { prompt: trimmed, history })
+      await ipc.invoke('ai:chat', { prompt: trimmed, history, previousEntryIds })
     } catch {
       toast.error('Unable to reach OpenAI. Check your API key in Settings.')
       setLoading(false)
@@ -131,7 +135,7 @@ function MessageBubble({ message, isStreaming }: { message: ChatMessage; isStrea
 
   return (
     <div className={`flex ${align}`}>
-      <div className={`max-w-2xl rounded-2xl px-6 py-4 text-sm leading-relaxed ${bubbleClasses}`}>
+      <div className={`max-w-2xl rounded-2xl px-6 py-4 text-base leading-relaxed ${bubbleClasses}`}>
         <p className="whitespace-pre-wrap">
           {message.content}
           {isStreaming && message.content.length === 0 && <WaveDots />}

@@ -3,6 +3,12 @@ import { toast } from 'sonner'
 import { useIpcInvoke } from '../shared/hooks/useIpcInvoke'
 import type { ConfigureAIRequest, StoredSettings } from '../shared/types/renderer'
 
+const AVAILABLE_MODELS = [
+  { id: 'gpt-5-nano', label: 'GPT-5 Nano', description: 'Fastest, lightweight tasks' },
+  { id: 'gpt-5-mini', label: 'GPT-5 Mini', description: 'Balanced speed and quality' },
+  { id: 'gpt-5.4', label: 'GPT-5.4', description: 'Most capable, deeper analysis' },
+]
+
 export function SettingsPage() {
   const [settings, setSettings] = useState<StoredSettings | null>(null)
   const [apiKey, setApiKey] = useState('')
@@ -11,6 +17,7 @@ export function SettingsPage() {
   const { invoke: snapshot } = useIpcInvoke('settings:snapshot')
   const { invoke: configure } = useIpcInvoke('ai:configure')
   const { invoke: clear } = useIpcInvoke('ai:clear')
+  const { invoke: setModel } = useIpcInvoke('settings:setModel')
 
   useEffect(() => {
     let mounted = true
@@ -44,6 +51,17 @@ export function SettingsPage() {
       toast.error('Failed to save API key.')
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleModelChange = async (modelId: string) => {
+    try {
+      await setModel({ model: modelId })
+      await refreshSettings()
+      const label = AVAILABLE_MODELS.find((m) => m.id === modelId)?.label ?? modelId
+      toast.success(`Switched to ${label}.`)
+    } catch {
+      toast.error('Failed to switch model.')
     }
   }
 
@@ -103,6 +121,37 @@ export function SettingsPage() {
                 Remove Stored Key
               </button>
             ) : null}
+          </div>
+        </section>
+
+        <section className="rounded-3xl border border-white/10 bg-black/30 p-8 backdrop-blur-xl">
+          <h3 className="text-lg font-display text-aurum">Model</h3>
+          <p className="mt-2 text-sm text-pearl/60">
+            Choose the OpenAI model used for journal analysis in Chat.
+          </p>
+          <div className="mt-4 flex flex-col gap-2">
+            {AVAILABLE_MODELS.map((m) => {
+              const isActive = (settings?.model ?? 'gpt-5-nano') === m.id
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => !isActive && handleModelChange(m.id)}
+                  className={`flex items-center justify-between rounded-xl border px-5 py-4 text-left transition ${
+                    isActive
+                      ? 'border-aurum/50 bg-aurum/10'
+                      : 'border-white/10 bg-white/5 hover:border-aurum/30 hover:bg-white/10'
+                  }`}
+                >
+                  <div>
+                    <p className={`text-sm font-medium ${isActive ? 'text-aurum' : 'text-pearl/80'}`}>{m.label}</p>
+                    <p className="mt-0.5 text-xs text-pearl/50">{m.description}</p>
+                  </div>
+                  {isActive ? (
+                    <span className="text-xs uppercase tracking-[0.2em] text-aurum/70">Active</span>
+                  ) : null}
+                </button>
+              )
+            })}
           </div>
         </section>
 

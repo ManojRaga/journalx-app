@@ -62,15 +62,71 @@ const INDEX_PATH = path.join(VECTOR_DIR, 'journal.index')
 const METADATA_PATH = path.join(VECTOR_DIR, 'journal.meta.json')
 const EMBEDDING_MODEL = 'text-embedding-3-small'
 
-type EntryMetadata = { id: string; title: string; content: string }
+const MAX_CHUNK_CHARS = 1500
+const MIN_CHUNK_CHARS = 100
+
+export type ChunkMetadata = {
+  id: string
+  title: string
+  content: string
+  createdAt: string
+  chunkIndex: number
+}
+
+function chunkEntry(entry: JournalEntry): { text: string; meta: ChunkMetadata }[] {
+  const fullText = entry.content
+  if (fullText.length <= MAX_CHUNK_CHARS) {
+    return [{
+      text: `${entry.title}\n\n${fullText}`,
+      meta: { id: entry.id, title: entry.title, content: fullText, createdAt: entry.createdAt, chunkIndex: 0 },
+    }]
+  }
+
+  // Split on double newlines (paragraph breaks), then merge small paragraphs
+  const paragraphs = fullText.split(/\n\s*\n/).filter((p) => p.trim().length > 0)
+  const chunks: { text: string; meta: ChunkMetadata }[] = []
+  let buffer = ''
+  let chunkIndex = 0
+
+  for (const paragraph of paragraphs) {
+    if (buffer.length > 0 && buffer.length + paragraph.length > MAX_CHUNK_CHARS) {
+      chunks.push({
+        text: `${entry.title}\n\n${buffer.trim()}`,
+        meta: { id: entry.id, title: entry.title, content: buffer.trim(), createdAt: entry.createdAt, chunkIndex },
+      })
+      chunkIndex++
+      buffer = ''
+    }
+    buffer += (buffer ? '\n\n' : '') + paragraph
+  }
+
+  // Flush remaining buffer
+  if (buffer.trim().length >= MIN_CHUNK_CHARS) {
+    chunks.push({
+      text: `${entry.title}\n\n${buffer.trim()}`,
+      meta: { id: entry.id, title: entry.title, content: buffer.trim(), createdAt: entry.createdAt, chunkIndex },
+    })
+  } else if (buffer.trim().length > 0 && chunks.length > 0) {
+    // Merge tiny remainder into last chunk
+    const last = chunks[chunks.length - 1]
+    last.text += '\n\n' + buffer.trim()
+    last.meta.content += '\n\n' + buffer.trim()
+  } else if (buffer.trim().length > 0) {
+    chunks.push({
+      text: `${entry.title}\n\n${buffer.trim()}`,
+      meta: { id: entry.id, title: entry.title, content: buffer.trim(), createdAt: entry.createdAt, chunkIndex: 0 },
+    })
+  }
+
+  return chunks
+}
 
 export class VectorStore {
   private index: any = null
-  private metadata: EntryMetadata[] = []
+  private metadata: ChunkMetadata[] = []
   private lastFingerprint: string = ''
 
   private computeFingerprint(entries: JournalEntry[]): string {
-    // Fast hash based on entry ids, titles, and content lengths + last modified timestamps
     return entries
       .map((e) => `${e.id}:${e.title.length}:${e.content.length}:${e.updatedAt}`)
       .sort()
@@ -93,7 +149,8 @@ export class VectorStore {
     if (fingerprint === this.lastFingerprint && this.index) return
 
     const FaissIndex = await loadFaiss()
-    const texts = entries.map((e) => `${e.title}\n\n${e.content}`)
+    const allChunks = entries.flatMap((e) => chunkEntry(e))
+    const texts = allChunks.map((c) => c.text)
     const embeddings = await this.embed(texts, apiKey)
 
     const dimension = embeddings[0].length
@@ -103,7 +160,7 @@ export class VectorStore {
       this.index.add(embedding)
     }
 
-    this.metadata = entries.map((e) => ({ id: e.id, title: e.title, content: `${e.title}\n\n${e.content}` }))
+    this.metadata = allChunks.map((c) => c.meta)
     this.lastFingerprint = fingerprint
 
     await fs.ensureDir(VECTOR_DIR)
@@ -117,12 +174,24 @@ export class VectorStore {
     }
 
     const [queryEmbedding] = await this.embed([query], apiKey)
-    const k = Math.min(topK, this.metadata.length)
+    // Fetch more chunks than needed so we can deduplicate by entry
+    const k = Math.min(topK * 3, this.metadata.length)
     const result = this.index.search(queryEmbedding, k)
 
-    return result.labels.map((idx: number, i: number) => ({
-      entry: this.metadata[idx],
-      score: result.distances[i],
-    }))
+    // Deduplicate: keep only the best-scoring chunk per entry, up to topK entries
+    const seen = new Set<string>()
+    const deduped: { entry: ChunkMetadata; score: number }[] = []
+
+    for (let i = 0; i < result.labels.length; i++) {
+      const idx = result.labels[i]
+      if (idx < 0) continue
+      const meta = this.metadata[idx]
+      if (seen.has(meta.id)) continue
+      seen.add(meta.id)
+      deduped.push({ entry: meta, score: result.distances[i] })
+      if (deduped.length >= topK) break
+    }
+
+    return deduped
   }
 }

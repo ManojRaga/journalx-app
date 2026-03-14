@@ -33,7 +33,7 @@ export class SettingsStorage {
   async setSettings(partial: Partial<Settings>) {
     const current = await this.getSettings()
     const next: Settings = {
-      encryptedApiKey: partial.encryptedApiKey ?? current.encryptedApiKey,
+      encryptedApiKey: 'encryptedApiKey' in partial ? partial.encryptedApiKey : current.encryptedApiKey,
       model: partial.model ?? current.model ?? DEFAULT_SETTINGS.model,
     }
 

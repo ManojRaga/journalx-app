@@ -13,6 +13,7 @@ interface ChatState {
   startAssistantMessage: () => string
   appendChunk: (chunk: string) => void
   finalizeAssistantMessage: (references: ChatMessage['references']) => void
+  dismissStreamingMessage: () => void
   clear: () => void
 }
 
@@ -95,6 +96,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
       messages: state.messages.map((m) =>
         m.id === streamingId ? { ...m, references } : m
       ),
+    }))
+  },
+  dismissStreamingMessage: () => {
+    const { streamingId } = get()
+    if (!streamingId) return
+    charBuffer = ''
+    pendingFinalize = null
+    if (drainTimer) { clearInterval(drainTimer); drainTimer = null }
+    set((state) => ({
+      streamingId: null,
+      messages: state.messages.filter((m) => m.id !== streamingId || m.content.length > 0),
     }))
   },
   clear: () => {

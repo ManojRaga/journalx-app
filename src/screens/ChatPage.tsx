@@ -22,6 +22,7 @@ export function ChatPage() {
     }
     const onError = (_event: any, error: string) => {
       toast.error(error || 'Unable to reach OpenAI. Check your API key in Settings.')
+      useChatStore.getState().dismissStreamingMessage()
       setLoading(false)
     }
 

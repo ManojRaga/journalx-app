@@ -58,28 +58,29 @@ export class AIService {
   }
 
   async chat(payload: ChatRequest, callbacks: StreamCallbacks): Promise<void> {
-    await this.ensureConfigured()
+    try {
+      await this.ensureConfigured()
 
-    const entries = await this.deps.storage.listEntries()
-    const documents = await Promise.all(entries.map((entry) => this.deps.storage.getEntry(entry.id)))
-    const validDocuments = documents.filter(Boolean) as JournalEntry[]
+      const entries = await this.deps.storage.listEntries()
+      const documents = await Promise.all(entries.map((entry) => this.deps.storage.getEntry(entry.id)))
+      const validDocuments = documents.filter(Boolean) as JournalEntry[]
 
-    const apiKey = this.store.get<string>('apiKey') ?? (await this.deps.settings.getApiKey())
-    await this.vectorStore.rebuild(validDocuments, apiKey!)
+      const apiKey = this.store.get<string>('apiKey') ?? (await this.deps.settings.getApiKey())
+      await this.vectorStore.rebuild(validDocuments, apiKey!)
 
-    // Build a search query enriched with recent conversation context
-    // so vague follow-ups like "tell me more about it" resolve correctly
-    const recentHistory = (payload.history ?? []).slice(-4)
-    const searchQuery = recentHistory.length > 0
-      ? [...recentHistory.map((m) => m.content), payload.prompt].join('\n')
-      : payload.prompt
-    const results = await this.vectorStore.search(searchQuery, payload.topK ?? 3, apiKey!)
+      // Build a search query enriched with recent conversation context
+      // so vague follow-ups like "tell me more about it" resolve correctly
+      const recentHistory = (payload.history ?? []).slice(-4)
+      const searchQuery = recentHistory.length > 0
+        ? [...recentHistory.map((m) => m.content), payload.prompt].join('\n')
+        : payload.prompt
+      const results = await this.vectorStore.search(searchQuery, payload.topK ?? 3, apiKey!)
 
-    const context = results
-      .map((item: { entry: { title: string; content: string }; score: number }) => `Title: ${item.entry.title}\n${item.entry.content}`)
-      .join('\n\n')
+      const context = results
+        .map((item: { entry: { title: string; content: string }; score: number }) => `Title: ${item.entry.title}\n${item.entry.content}`)
+        .join('\n\n')
 
-    const systemPrompt = `You are JournalX, a concise assistant that can analyze journal entries when asked.
+      const systemPrompt = `You are JournalX, a concise assistant that can analyze journal entries when asked.
 
 Rules:
 - For casual messages (greetings, small talk), respond briefly and naturally — do NOT analyze journal data unless asked
@@ -88,11 +89,10 @@ Rules:
 - Be conversational, not clinical
 - Always refer to the journal author as "you", never "the writer" or "the author"`
 
-    const userPrompt = context
-      ? `${payload.prompt}\n\nRelevant journal snippets:\n${context}`
-      : payload.prompt
+      const userPrompt = context
+        ? `${payload.prompt}\n\nRelevant journal snippets:\n${context}`
+        : payload.prompt
 
-    try {
       const stream = await this.client!.chat.completions.create({
         model: this.model,
         max_completion_tokens: 4096,

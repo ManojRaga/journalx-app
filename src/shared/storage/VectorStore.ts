@@ -4,17 +4,29 @@ import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 import OpenAI from 'openai'
 import type { JournalEntry } from '../types/journal'
-import { VECTOR_DIR } from './constants'
+import { APP_DIR, VECTOR_DIR } from './constants'
 
 const require = createRequire(import.meta.url)
 
 let IndexFlatIP: any = null
 
 async function ensureFaissBinary() {
-  const targetDir = path.join(process.cwd(), 'build')
+  const targetDir = path.join(APP_DIR, 'native')
   const targetPath = path.join(targetDir, 'faiss-node.node')
   if (await fs.pathExists(targetPath)) return
 
+  // Packaged app: check extraResources location
+  const resourcesPath = (process as any).resourcesPath
+  if (resourcesPath) {
+    const bundledPath = path.join(resourcesPath, 'native', 'faiss-node', 'faiss-node.node')
+    if (await fs.pathExists(bundledPath)) {
+      await fs.ensureDir(targetDir)
+      await fs.copyFile(bundledPath, targetPath)
+      return
+    }
+  }
+
+  // Dev mode: resolve from node_modules
   let sourcePath: string | null = null
   try {
     const modulePath = require.resolve('faiss-node')

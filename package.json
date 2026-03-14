@@ -1,11 +1,14 @@
 {
   "name": "journalx-app",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
+    "build:mac": "tsc && vite build && electron-builder --mac",
+    "build:win": "tsc && vite build && electron-builder --win",
+    "build:all": "tsc && vite build && electron-builder --mac --win",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
@@ -42,5 +45,47 @@
     "vite-plugin-electron": "^0.28.6",
     "vite-plugin-electron-renderer": "^0.14.5"
   },
-  "main": "dist-electron/main.js"
+  "main": "dist-electron/main.js",
+  "build": {
+    "appId": "com.journalx.app",
+    "productName": "JournalX",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "build/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/faiss-node/build/Release",
+        "to": "native/faiss-node",
+        "filter": ["*.node"]
+      },
+      {
+        "from": "node_modules/better-sqlite3/build/Release",
+        "to": "native/better-sqlite3",
+        "filter": ["*.node"]
+      }
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "**/node_modules/faiss-node/**",
+      "**/node_modules/better-sqlite3/**"
+    ],
+    "mac": {
+      "target": ["dmg", "zip"],
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.icns"
+    },
+    "win": {
+      "target": ["nsis"],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
 }

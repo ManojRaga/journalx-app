@@ -8,8 +8,16 @@ import type { JournalEntry } from '../shared/types/journal'
 export function HomePage() {
   const { journals, refreshJournals } = useAppData()
   const { invoke: getEntry } = useIpcInvoke('storage:getEntry')
+  const { invoke: deleteEntry } = useIpcInvoke('storage:deleteEntry')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null)
+
+  const handleDelete = async (id: string) => {
+    await deleteEntry({ id })
+    setSelectedId(null)
+    setSelectedEntry(null)
+    refreshJournals()
+  }
 
   const sortedJournals = useMemo(() => {
     return [...journals].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
@@ -68,7 +76,7 @@ export function HomePage() {
 
       <div className="flex flex-1 overflow-hidden px-12 py-10">
         <JournalLibrary entries={sortedJournals} selectedId={selectedId} onSelect={setSelectedId} />
-        <JournalPreviewPanel entry={selectedEntry} />
+        <JournalPreviewPanel entry={selectedEntry} onDelete={handleDelete} />
       </div>
     </section>
   )
@@ -139,7 +147,9 @@ function JournalLibrary({
   )
 }
 
-function JournalPreviewPanel({ entry }: { entry: JournalEntry | null }) {
+function JournalPreviewPanel({ entry, onDelete }: { entry: JournalEntry | null; onDelete: (id: string) => void }) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+
   if (!entry) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center text-center text-pearl/40">
@@ -162,6 +172,32 @@ function JournalPreviewPanel({ entry }: { entry: JournalEntry | null }) {
           >
             Edit Entry
           </Link>
+          {confirmingDelete ? (
+            <>
+              <button
+                onClick={() => {
+                  onDelete(entry.id)
+                  setConfirmingDelete(false)
+                }}
+                className="rounded-full border border-red-500/60 px-4 py-2 text-red-400 transition hover:bg-red-500/10"
+              >
+                Confirm Delete
+              </button>
+              <button
+                onClick={() => setConfirmingDelete(false)}
+                className="rounded-full border border-white/10 px-4 py-2 text-pearl/50 transition hover:bg-white/5"
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setConfirmingDelete(true)}
+              className="rounded-full border border-white/10 px-4 py-2 text-pearl/50 transition hover:border-red-500/40 hover:text-red-400"
+            >
+              Delete Entry
+            </button>
+          )}
         </div>
       </header>
       <div className="mt-8 whitespace-pre-wrap text-sm leading-relaxed text-pearl/80">
